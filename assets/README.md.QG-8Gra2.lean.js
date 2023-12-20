@@ -1,0 +1,1 @@
+import{_ as l,o as i,c as t,R as o}from"./chunks/framework.rJiKXBRW.js";const b=JSON.parse('{"title":"yutto の自己紹介〜","description":"","frontmatter":{},"headers":[],"relativePath":"README.md","filePath":"README.md"}'),e={name:"README.md"},u=o("",5),a=[u];function p(r,s,n,c,_,d){return i(),t("div",null,a)}const E=l(e,[["render",p]]);export{b as __pageData,E as default};

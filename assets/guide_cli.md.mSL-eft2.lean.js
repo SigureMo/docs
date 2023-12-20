@@ -1,0 +1,1 @@
+import{_ as i,o as e,c as a,R as t}from"./chunks/framework.rJiKXBRW.js";const g=JSON.parse('{"title":"命令行参数","description":"","frontmatter":{},"headers":[],"relativePath":"guide/cli.md","filePath":"guide/cli.md"}'),s={name:"guide/cli.md"},l=t("",97),d=[l];function o(n,h,c,p,r,k){return e(),a("div",null,d)}const y=i(s,[["render",o]]);export{g as __pageData,y as default};
