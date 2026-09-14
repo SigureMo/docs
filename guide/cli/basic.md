@@ -1,0 +1,359 @@
+---
+url: /guide/cli/basic.md
+---
+
+# 基础参数
+
+我支持一些基础参数，无论是批量下载还是单视频下载都适用。
+
+## 最大并行 worker 数量
+
+* 参数 `-n` 或 `--num-workers`
+* 配置项 `basic.num_workers`
+* 默认值 `8`
+
+本参数限制的是单个音视频的最大并发数。
+
+## 同时下载的音视频数量&#x20;
+
+* 参数 `-j` 或 `--jobs`
+* 配置项 `basic.jobs`
+* 默认值 `1`
+
+本参数限制同时处理的音视频数量，适用于 URL 列表和批量来源中的多个分集。`--jobs` 控制音视频级并发，`--num-workers` 控制每个视频内部的分块下载 worker；例如 `-j 3 -n 8` 最多会同时处理 3 个视频，每个视频最多使用 8 个下载 worker。
+
+## 批量解析最大并行请求数量
+
+* 参数 `--fetch-workers`
+* 配置项 `basic.fetch_workers`
+* 默认值 `8`
+
+批量下载（收藏夹 / 合集 / 视频列表 / UP 主投稿等）时，我会并发地解析列表中各个视频的信息，本参数限制解析阶段的最大并行请求数量。它与 `--num-workers` 相互独立：`--num-workers` 作用于下载阶段的分块下载，本参数只作用于解析阶段的 API 请求。
+
+如果遇到风控（日志中出现请求失败提示），可以尝试调低本参数；设置为 `1` 即可回到逐个视频串行解析的行为。
+
+## 指定视频清晰度等级
+
+* 参数 `-q` 或 `--video-quality`
+* 配置项 `basic.video_quality`
+* 可选值 `127 | 126 | 125 | 120 | 116 | 112 | 100 | 80 | 74 | 64 | 32 | 16`
+* 默认值 `127`
+
+清晰度对应关系如下
+
+| code | 清晰度 |
+| :-: | :-: |
+| 127 | 8K 超高清 |
+| 126 | 杜比视界 |
+| 125 | 4K·HDR10 |
+| 120 | 4K 超高清 |
+| 116 | 1080P 60帧 |
+| 112 | 1080P 高码率 |
+| 100 | 智能修复 |
+| 80 | 1080P 高清 |
+| 74 | 720P 60帧 |
+| 64 | 720P 准高清 |
+| 32 | 480P 标清 |
+| 16 | 360P 流畅 |
+
+并不是说指定某个清晰度就一定会下载该清晰度的视频，我只会尽可能满足你的要求，如果不存在指定的清晰度，我就会按照默认的清晰度搜索机制进行调节，比如指定清晰度为 `80`，**首先会依次降清晰度搜索** `74`、`64`、`32`、`16`，如果依然找不到合适的则**继续升清晰度搜索** `100`、`112`、`116`、`120`、`125`、`126`、`127`。
+
+## 指定音频码率等级
+
+* 参数 `-aq` 或 `--audio-quality`
+* 配置项 `basic.audio_quality`
+* 可选值 `30251 | 30255 | 30250 | 30280 | 30232 | 30216`
+* 默认值 `30251`
+
+码率对应关系如下
+
+| code | 码率 |
+| :-: | :-: |
+| 30251 |  - (Hi-Res)  |
+| 30255 |  - (杜比音效)  |
+| 30250 |  - (杜比全景声)  |
+| 30280 | 320kbps |
+| 30232 | 128kbps |
+| 30216 | 64kbps |
+
+码率自动调节机制与视频清晰度一致，也采用先降后升的匹配机制。
+
+## 指定视频编码
+
+* 参数 `--vcodec`
+* 配置项 `basic.vcodec`
+* 下载编码可选值 `"av1" | "hevc" | "avc"`
+* 保存编码可选值 FFmpeg 所有可用的视频编码器
+* 默认值 `"avc:copy"`
+
+该参数略微复杂，前半部分表示在下载时**优先**选择哪一种编码的视频流，后半部分则表示在合并时如何编码视频流，两者使用 `:` 分隔。
+
+值得注意的是，前半的下载编码只是优先下载的编码而已，如果不存在该编码，我会根据 `--download-vcodec-priority` 自动选择其余编码，如未设置 `--download-vcodec-priority`，则会类似视频清晰度调节机制先降序后升序的方式来选择。
+
+而后半部分的参数如果设置成非 `copy` 的值则可以确保在下载完成后对其进行重新编码，而且不止支持 `av1`、`hevc` 与 `avc`，只要是 FFmpeg 前辈支持的视频编码器，我都可以完成重新编码。
+
+## 指定音频编码
+
+* 参数 `--acodec`
+* 配置项 `basic.acodec`
+* 下载编码可选值 `"mp4a"`
+* 保存编码可选值 FFmpeg 所有可用的音频编码器
+* 默认值 `"mp4a:copy"`
+
+详情同视频编码。
+
+需要注意的是，音频保存编码 `copy` 的语义是「尽量直接拷贝」：输出容器能够直接封装源编码时不做任何转码；而当显式选择 `.aac` / `.mp3` / `.flac` 这类单编码容器且其无法封装源编码时，我会自动转码为容器对应的编码并在日志中告知，以保证输出的可用。显式指定的非 `copy` 保存编码则总是被原样遵循。
+
+## 指定视频下载编码优先级
+
+* 参数 `--download-vcodec-priority`
+* 配置项 `basic.download_vcodec_priority`
+* 默认值 `"auto"`
+* 可选值 `"auto"` 或者使用 `,` 分隔的下载编码列表，如 `"hevc,avc,av1"`
+
+当使用默认值 `"auto"` 时，我会类似视频清晰度调节机制先降序后升序的方式来选择。
+
+当使用自定义下载编码列表时，我会严格按照列表中的顺序进行选择，如果都不存在的话，我就会认为该视频没有视频流了。
+
+::: warning
+
+如若设置本参数，请总是将 `--download-vcode-priority` 首选编码作为 `--vcodec` 的前半部分，否则可能会导致下载失败。
+
+另外需要注意的是，作为配置项时，请直接使用列表形式，比如：
+
+```toml [yutto.toml]
+[basic]
+download_vcodec_priority = ["hevc", "avc", "av1"]
+```
+
+:::
+
+## 指定输出格式
+
+* 参数 `--output-format`
+* 配置项 `basic.output_format`
+* 可选值 `"infer" | "mp4" | "mkv" | "mov"`
+* 默认值 `"infer"`
+
+在至少包含视频流时所使用的输出格式，默认选值 `"infer"` 表示自动根据情况进行推导以保证输出的可用，推导规则如下：
+
+* 如果输出包含音频流且音频流编码为 `"fLaC"`，则输出格式为 `"mkv"`，因为 `"mp4"` 尚不支持 `"fLaC"` 编码
+* 否则为 `"mp4"`
+
+## 指定在仅包含音频流时的输出格式
+
+* 参数 `--output-format-audio-only`
+* 配置项 `basic.output_format_audio_only`
+* 可选值 `"infer" | "m4a" | "aac" | "mp3" | "flac" | "mp4" | "mkv" | "mov"`
+* 默认值 `"infer"`
+
+在仅包含音频流时所使用的输出格式，默认选值 `"infer"` 表示自动根据情况进行推导以保证输出的可用，推导规则如下：
+
+* 如果音频流编码为 `"fLaC"`，且保存编码为 `"copy"`，则输出格式为 `"flac"`，因为 `"m4a"` 尚不支持 `"fLaC"` 编码
+* 如果音频流编码为 `"EAC3"`，且保存编码为 `"copy"`，则输出格式为 `"mkv"`，因为 `"m4a"` 尚不支持 `"EAC3"` 编码
+* 否则为 `"m4a"`
+
+而显式指定 `"aac"` / `"mp3"` / `"flac"` 这类单编码容器时，若保存编码为 `"copy"` 且源编码无法直接装入该容器，我会自动转码为容器对应的编码（见「指定音频编码」一节）。
+
+::: tip
+
+并不是仅仅在指定 `--audio-only` 时才会仅仅包含视频流，有些视频是仅包含音频流的，此时即便不指定 `--audio-only` 选项也会按照本选项的格式进行输出。
+
+:::
+
+## 指定 FFmpeg 路径
+
+* 参数 `--ffmpeg-path`
+* 默认值 `"ffmpeg"`
+
+FFmpeg 可执行文件路径。默认值 `"ffmpeg"` 表示按名从 `PATH` 解析；当 FFmpeg 不在 `PATH` 中时，可用本参数指定可执行文件的完整路径，如 `--ffmpeg-path /opt/ffmpeg/ffmpeg`。`yutto serve` 同样支持本参数。
+
+## 启用 AI 原声翻译功能
+
+* 参数 `--ai-translation-language`
+* 配置项 `basic.ai_translation_language`
+* 可选值 语言代码，比如 `"en"` 等，具体可用值根据视频而定
+* 默认值 `None`
+
+启用 AI 原声翻译功能后，如果视频支持该功能，音视频源会被替换为启用 AI 原声翻译功能后的源（主要为音频，视频可能有口型微调）。
+
+## 弹幕格式选择
+
+* 参数 `-df` 或 `--danmaku-format`
+* 配置项 `basic.danmaku_format`
+* 可选值 `"ass" | "xml" | "protobuf"`
+* 默认值 `"ass"`
+
+B 站提供了 `xml` 与 `protobuf` 两种弹幕数据接口，`xml` 接口为旧接口，弹幕数上限较低，`protobuf` 接口相对较高，但不登录情况下只能获取很少的弹幕
+
+为了确保无论是否登录都能获取最多的弹幕，我在登录时会下载 `protobuf` 源数据，在未登录时会下载 `xml` 源数据，并将其转换为主流播放器支持的 `ass` 格式
+
+如果你不喜欢我自动转换的效果，可以选择输出格式为 `xml` 或 `protobuf`，手动通过一些工具进行转换，比如我默认使用的 [biliass](https://github.com/yutto-dev/yutto/tree/main/packages/biliass)，或者使用 [us-danmaku](https://tiansh.github.io/us-danmaku/bilibili/) 进行在线转换。
+
+如果你不想下载弹幕，只需要使用参数 `--no-danmaku` 即可。
+
+## 下载块大小
+
+* 参数 `-bs` 或 `--block-size`
+* 配置项 `basic.block_size`
+* 默认值 `0.5`
+
+以 MiB 为单位，为分块下载时各块大小，不建议更改。
+
+## 强制覆盖已下载文件
+
+* 参数 `-w` 或 `--overwrite`
+* 配置项 `basic.overwrite`
+* 默认值 `False`
+
+## 代理设置
+
+* 参数 `-x` 或 `--proxy`
+* 配置项 `basic.proxy`
+* 可选值 `"auto" | "no" | <https?://url/to/proxy/server>`
+* 默认值 `"auto"`
+
+设置代理服务器，默认是从环境变量读取，`no` 则为不设置代理，设置其它 http/https url 则将其作为代理服务器。
+
+## 存放根目录
+
+* 参数 `-d` 或 `--dir`
+* 配置项 `basic.dir`
+* 默认值 `"./"`
+
+## 临时文件目录
+
+* 参数 `--tmp-dir`
+* 配置项 `basic.tmp_dir`
+* 默认值是“存放根目录”即 `-d, --dir` 的值
+
+## 存放子路径模板
+
+* 参数 `-tp` 或 `--subpath-template`
+* 配置项 `basic.subpath_template`
+* 可选参数变量 `title | id | name | username | series_title | pubdate | download_date | owner_uid` （以后可能会有更多）
+* 默认值 `"{auto}"`
+
+通过配置子路径模板可以灵活地控制视频存放位置。
+
+默认情况是由我自动控制存放位置的。比如下载单个视频时默认就是直接存放在设定的根目录，不会创建一层容器目录，此时自动选择了 `{name}` 作为模板；而批量下载时则会根据视频层级生成多级目录，比如番剧会是 `{title}/{name}`，首先会在设定根目录里生成一个番剧名的目录，其内才会存放各个番剧剧集视频，这样方便了多个不同番剧的管理。当然，如果你仍希望将番剧直接存放在设定根目录下的话，可以修改该参数值为 `{name}`即可。
+
+另外，该功能语法由 Python format 函数模板语法提供，所以也支持一些高级的用法，比如 `{id:0>3}{name}`，此外还专门为时间变量 🕛 增加了自定义时间模板的语法 `{pubdate@%Y-%m-%d %H:%M:%S}`，默认时间模板为 `%Y-%m-%d`。
+
+值得注意的是，并不是所有变量在各种场合下都会提供，比如 `username`, `owner_uid`, `owner_uname` 变量当前仅在 UP 主全部投稿视频/收藏夹/稍后再看才提供，在其它情况下不应使用它。各变量详细作用域描述见下表：
+
+| Variable | Description | Scope |
+| - | - | - |
+| title | 系列视频总标题（番剧名/投稿视频标题） | 全部 |
+| id | 系列视频单 p 顺序标号 | 全部 |
+| aid | 视频 AV 号，早期使用的视频 ID，不建议使用，详见 [AV 号全面升级公告](https://www.bilibili.com/blackboard/activity-BV-PC.html) | 全部 |
+| bvid | 视频 BV 号，即视频 ID | 全部 |
+| name | 系列视频单 p 标题 | 全部 |
+| username | 视频作者用户名 | 个人空间、收藏夹、稍后再看、合集、视频列表下载 |
+| series\_title | 合集标题 | 收藏夹、视频合集、视频列表下载 |
+| pubdate🕛 | 投稿日期 | 仅投稿视频 |
+| download\_date🕛 | 下载日期 | 全部 |
+| owner\_uid | 视频作者 UID | 个人空间、收藏夹、稍后再看、合集、视频列表下载 |
+| owner\_uname | 视频作者用户名 | 个人空间、收藏夹、稍后再看、合集、视频列表下载 |
+
+::: tip
+
+未来可能会对路径变量及默认路径模板进行调整
+
+:::
+
+## url 别名设置
+
+* 参数 `-af` 或 `--alias-file`
+* 配置项 `basic.aliases`
+* 默认值 `None`
+
+由于 CLI 和配置文件两种界面是不一致的，别名的配置方式有着较大的区别，下面分别介绍两者。
+
+### 别名文件路径设置（CLI）
+
+在 CLI，你需要通过 `-af`/`--alias-file` 来指定别名文件路径，并在该文件中写明别名的映射关系，使用空格或者 `=` 分隔，示例如下：
+
+```
+tensura1=https://www.bilibili.com/bangumi/play/ss25739/
+tensura2=https://www.bilibili.com/bangumi/play/ss36170/
+tensura-nikki=https://www.bilibili.com/bangumi/play/ss38221/
+```
+
+比如将上述内容存储到 `~/.yutto_alias`，则通过以下命令即可解析该文件：
+
+```bash
+yutto tensura1 --batch --alias-file='~/.yutto_alias'
+```
+
+当参数值为 `-` 时，会从标准输入中读取：
+
+```bash
+cat ~/.yutto_alias | yutto tensura-nikki --batch --alias-file -
+```
+
+### 别名配置设置（配置文件）
+
+因为配置文件本身就是外部文件，因此可以直接通过结构化数据来表明别名映射关系，示例如下：
+
+```toml
+[basic.aliases]
+tensura1 = "https://www.bilibili.com/bangumi/play/ss25739/"
+tensura2 = "https://www.bilibili.com/bangumi/play/ss36170/"
+tensura-nikki = "https://www.bilibili.com/bangumi/play/ss38221/"
+```
+
+## 指定媒体元数据值的格式
+
+当前仅支持 `premiered`
+
+* 参数 `--metadata-format-premiered`
+* 配置项 `basic.metadata_format_premiered`
+* 默认值 `"%Y-%m-%d"`
+* 常用值 `"%Y-%m-%d %H:%M:%S"`
+
+## 设置下载间隔
+
+* 参数 `--download-interval`
+* 配置项 `basic.download_interval`
+* 默认值 `0`
+
+设置两话之间的下载间隔（单位为秒），避免短时间內下载大量视频导致账号被封禁
+
+## 禁用下载镜像
+
+* 参数 `--banned-mirrors-pattern`
+* 配置项 `basic.banned_mirrors_pattern`
+* 默认值 `None`
+
+使用正则禁用特定镜像，比如 `--banned-mirrors-pattern "mirrorali"` 将禁用 url 中包含 `mirrorali` 的镜像
+
+## 严格校验大会员状态有效
+
+* 参数 `--vip-strict`
+* 配置项 `basic.vip_strict`
+* 默认值 `False`
+
+## 严格校验登录状态有效
+
+* 参数 `--login-strict`
+* 配置项 `basic.login_strict`
+* 默认值 `False`
+
+## 不显示颜色
+
+* 参数 `--no-color`
+* 配置项 `basic.no_color`
+* 默认值 `False`
+
+## 不显示进度条
+
+* 参数 `--no-progress`
+* 配置项 `basic.no_progress`
+* 默认值 `False`
+
+## 启用 Debug 模式
+
+* 参数 `--debug`
+* 配置项 `basic.debug`
+* 默认值 `False`
