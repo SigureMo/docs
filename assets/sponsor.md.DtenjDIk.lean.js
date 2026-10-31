@@ -1,0 +1,1 @@
+import{at as e,it as t,n,vt as r}from"./chunks/framework.B6nQ8gjX.js";var i=JSON.parse(`{"title":"赞助","description":"","frontmatter":{},"headers":[],"relativePath":"sponsor.md","filePath":"sponsor.md"}`),a={name:`sponsor.md`};function o(n,i,a,o,s,c){return r(),t(`div`,null,[...i[0]||=[e("",9)]])}var s=n(a,[[`render`,o]]);export{i as __pageData,s as default};
